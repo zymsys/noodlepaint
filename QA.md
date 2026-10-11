@@ -1,3 +1,10 @@
+# Verification — 2026-10-11 (layers, library, undo/redo taps, eraser, eyedropper, photos)
+
+- 42 unit tests: v1→v2 storage migration (and an abort that leaves corrupt v1 data untouched), library listing/rename/delete with photo blobs, corrupt current drawing fails open, 2-finger undo and 3-finger redo taps (no stray dot; slow, staggered or moving contacts stay strokes), redo cleared by new edits, layer add/move/delete/settings undo, locked/hidden layers refuse paint, eraser strokes, clear-all undo, v2 validation, cross-layer restore undo, and backup bundles (old single drawings, re-keyed photos, missing photo rejected).
+- 32 browser checks in Chromium plus WebKit. New: real CDP two- and three-finger taps; eraser pixels; layer add, paint, opacity (one undo step per drag), blend, hide; Save to Photos 2× PNG (download fallback); eyedropper; photo import surviving reload; library switching with thumbnails; back up all plus restore. Screenshots: `test-results/noodlepaint-{mobile,mixer,menu,layers,library}.png`.
+- Found and fixed while testing: the long-press finger's lift clicked a mixer button and closed it; focus/blur refreshes rebuilt the layer list between pointerdown and click, swallowing taps on its toggles.
+- Not verified here (needs the iPhone): the share sheet's Save Image, the photo picker and camera, real two/three-finger tap timing, and memory with many layers (each is a paper-sized canvas at device resolution).
+
 # Verification — 2026-10-11 (NoodlePaint rebrand + swatch mixer)
 
 - TypeScript strict check and production Vite build passed using Node 24.12.0. Production client JS is approximately 16.9 kB (6.4 kB gzip); no React or runtime packages.
