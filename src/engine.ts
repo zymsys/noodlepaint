@@ -150,7 +150,8 @@ export class Engine {
     for(let k=Math.max(0,order.length-RESTORE_UNDO);k<order.length;k++){const [li,si]=order[k];this.history.push({layers:d.layers.map((l,i)=>({...l,strokes:i<li?l.strokes.slice():i===li?l.strokes.slice(0,si):[]})),active:d.active});}
     this.revision=0;
   }
-  snapshot():Drawing {return structuredClone(this.drawing);}
+  // A detached copy for saving and export: finished strokes never change, so only the active stroke, cursor and layer records are copied.
+  snapshot():Drawing {const d=this.drawing;return {...d,cursor:{...d.cursor},layers:d.layers.map(l=>({...l,...(l.image?{image:{...l.image}}:{}),strokes:l.strokes.map(s=>s===this.active?{...s,samples:s.samples.slice()}:s)}))};}
 }
 // Version 1 drawings were a single stroke list; they become one layer.
 export function migrate(value:unknown):unknown {

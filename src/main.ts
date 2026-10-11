@@ -43,9 +43,9 @@ void init();
 const observer=new ResizeObserver(()=>{engine.suspend();renderer.resize();changed();void persist();});observer.observe(canvas);
 
 // ---- Painting input
-canvas.addEventListener('pointerdown',e=>{if(!ready||sheetOpen()||e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();engine.downPointer(e.pointerId,e.clientX,e.clientY,e.pointerType,e.timeStamp);try{canvas.setPointerCapture(e.pointerId);}catch{engine.cancelPointer(e.pointerId);}changed();if(engine.down)void persist();});
+canvas.addEventListener('pointerdown',e=>{if(!ready||sheetOpen()||e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();engine.downPointer(e.pointerId,e.clientX,e.clientY,e.pointerType,e.timeStamp);try{canvas.setPointerCapture(e.pointerId);}catch{engine.cancelPointer(e.pointerId);}changed();});
 canvas.addEventListener('pointermove',e=>{if(!engine.pointers.has(e.pointerId))return;e.preventDefault();const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];for(const p of samples.length?samples:[e])engine.movePointer(e.pointerId,p.clientX,p.clientY,engine.transform.scale);});
-function up(e:PointerEvent){const before=engine.revision;engine.upPointer(e.pointerId,e.timeStamp);changed();if(engine.revision!==before||!engine.down)void persist();}
+function up(e:PointerEvent){engine.upPointer(e.pointerId,e.timeStamp);changed();if(!engine.pointers.size)void persist();}
 window.addEventListener('pointerup',up);
 window.addEventListener('pointercancel',e=>{engine.cancelPointer(e.pointerId);changed();void persist();});
 canvas.addEventListener('lostpointercapture',e=>{if(engine.steer===e.pointerId||engine.pressure===e.pointerId){engine.cancelPointer(e.pointerId);changed();void persist();}});
@@ -63,7 +63,8 @@ canvas.addEventListener('keyup',e=>{if(e.code==='Space'){engine.end();void persi
 canvas.addEventListener('blur',()=>{engine.suspend();changed();void persist();});
 function checkpointNow(){engine.resetPointers();changed();void persist();void saveThumb();}
 window.addEventListener('blur',checkpointNow);window.addEventListener('pagehide',checkpointNow);document.addEventListener('visibilitychange',()=>{if(document.hidden)checkpointNow();});
-checkpoint=window.setInterval(()=>{if(ready&&queue.savedRevision!==engine.revision)void persist();},500);
+// Saving copies the whole drawing on the main thread, so it never runs while a finger is down: a stall there turns the next finger movement into one straight jump. Lifting, backgrounding and pagehide all save.
+checkpoint=window.setInterval(()=>{if(ready&&!engine.pointers.size&&queue.savedRevision!==engine.revision)void persist();},500);
 void checkpoint;
 
 // ---- Inks, eraser, mixer
