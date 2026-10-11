@@ -1,3 +1,8 @@
+# Verification — 2026-10-11 (exact width and width lock)
+
+- 47 unit tests (new: a locked width ignores the second finger, wheel and keys and says so; `setWidth` still applies and clamps).
+- 34 browser checks (new: tap the width pill, logarithmic slider, ±1, lock blocks a real second-finger resize with a toast, lock and width survive reload, unlock hides the pill's lock). Screenshot: `test-results/noodlepaint-width.png`.
+
 # Verification — 2026-10-11 (steering clutch, pinch zoom)
 
 - Re-steer lag on the phone: putting the steering finger back down mid-stroke triggered a whole-drawing save (and the 500 ms checkpoint also saved mid-stroke). At 6× CPU throttle in Chromium that blocked the main thread for 148 ms at 40k samples and 1078 ms at 200k; the next movement arrived as one straight jump. Saves no longer run while any finger is down and snapshots share finished strokes: re-steer now takes one frame (15 ms) at every size. The QA check that a partial stroke is committed mid-gesture now asserts the opposite.

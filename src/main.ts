@@ -6,7 +6,7 @@ import {DEFAULT_PALETTE,DEFAULT_NAMES,loadPalette,savePalette} from './palette';
 import {createMixer} from './mixer';
 import {bundle,unbundle} from './backup';
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
-const canvas=$<HTMLCanvasElement>('canvas'),panel=$<HTMLDialogElement>('panel'),menu=$<HTMLDialogElement>('menu'),library=$<HTMLDialogElement>('library'),layers=$<HTMLDialogElement>('layers');
+const canvas=$<HTMLCanvasElement>('canvas'),panel=$<HTMLDialogElement>('panel'),menu=$<HTMLDialogElement>('menu'),library=$<HTMLDialogElement>('library'),layers=$<HTMLDialogElement>('layers'),widthSheet=$<HTMLDialogElement>('width-sheet');
 const engine=new Engine(),renderer=new Renderer(canvas,engine),store=new SketchStore();
 renderer.loadBlob=key=>store.getBlob(key);
 let doc:Doc=newDoc('Drawing 1',engine.drawing);
@@ -32,7 +32,7 @@ let thumbTimer=0,thumbRevision=-1;
 function scheduleThumb(){clearTimeout(thumbTimer);if(engine.down||!ready||loadFailed)return;thumbTimer=window.setTimeout(()=>void saveThumb(),1500);}
 async function saveThumb(){clearTimeout(thumbTimer);if(!ready||loadFailed||thumbRevision===engine.revision)return;const revision=engine.revision,id=doc.id;try{await store.setThumb(id,await renderer.thumb(engine.drawing));thumbRevision=revision;}catch{}}
 function changed(){
- renderer.request();$('hint').hidden=!engine.empty||engine.pointers.size>0;$('pen-state').textContent=engine.down?(engine.tool==='erase'?'Erasing':'Making a mark'):engine.tool==='erase'?'Eraser raised':'Brush raised';$('pen-dot').classList.toggle('down',engine.down);$('width').textContent=String(Math.round(engine.drawing.cursor.w));
+ renderer.request();$('hint').hidden=!engine.empty||engine.pointers.size>0;$('pen-state').textContent=engine.down?(engine.tool==='erase'?'Erasing':'Making a mark'):engine.tool==='erase'?'Eraser raised':'Brush raised';$('pen-dot').classList.toggle('down',engine.down);$('width-number').textContent=String(Math.round(engine.drawing.cursor.w));$('width-locked').hidden=!engine.widthLocked;$('width-button').setAttribute('aria-label',`Brush width ${Math.round(engine.drawing.cursor.w)}${engine.widthLocked?', locked':''}. Set width`);if(widthSheet.open)showWidth();
  $<HTMLButtonElement>('undo').disabled=!engine.history.length;$<HTMLButtonElement>('redo').disabled=!engine.future.length;$<HTMLButtonElement>('clear').disabled=engine.empty;
  $('eraser').setAttribute('aria-pressed',String(engine.tool==='erase'));showPalette();
  if(layers.open)showLayers();status();scheduleThumb();
@@ -88,6 +88,17 @@ $('redo').onclick=()=>{engine.redo();void persist();};
 $('clear').onclick=()=>{engine.clear();void persist();menu.close();};
 for(const b of document.querySelectorAll<HTMLButtonElement>('[data-close]'))b.onclick=()=>b.closest('dialog')!.close();
 function sheet(d:HTMLDialogElement){engine.suspend();changed();void persist();for(const o of document.querySelectorAll<HTMLDialogElement>('dialog[open]'))if(o!==d)o.close();d.showModal();}
+
+// ---- Brush width: the pill opens an exact setter; the slider is logarithmic so fine widths get most of its travel.
+const LOCK_KEY='noodlepaint-width-lock',widthRange=$<HTMLInputElement>('width-range'),toSlider=(w:number)=>Math.round(1000*Math.log(w/2)/Math.log(60)),fromSlider=(v:number)=>2*60**(v/1000);
+try{engine.widthLocked=localStorage.getItem(LOCK_KEY)==='1';}catch{}
+function showWidth(){const w=engine.drawing.cursor.w,px=Math.max(1,w*engine.transform.scale);widthRange.value=String(toSlider(w));$('width-value').textContent=String(Math.round(w));const dot=$('width-preview').querySelector('i')!;dot.style.width=dot.style.height=`${Math.min(px,128)}px`;dot.style.setProperty('--ink',engine.tool==='erase'?'#9da3b6':engine.drawing.color);const lock=$('width-lock');lock.setAttribute('aria-pressed',String(engine.widthLocked));lock.textContent=engine.widthLocked?'Width locked':'Lock width';}
+function setWidth(w:number){engine.setWidth(Math.round(w));changed();}
+$('width-button').onclick=()=>{sheet(widthSheet);showWidth();};
+widthRange.oninput=()=>setWidth(fromSlider(+widthRange.value));widthRange.onchange=()=>void persist();
+$('width-down').onclick=()=>{setWidth(engine.drawing.cursor.w-1);void persist();};
+$('width-up').onclick=()=>{setWidth(engine.drawing.cursor.w+1);void persist();};
+$('width-lock').onclick=()=>{engine.widthLocked=!engine.widthLocked;try{localStorage.setItem(LOCK_KEY,engine.widthLocked?'1':'0');}catch{}changed();};
 
 // ---- Menu: export picture, backups
 let photo:Promise<Blob>|null=null;

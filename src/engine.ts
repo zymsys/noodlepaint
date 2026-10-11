@@ -39,6 +39,8 @@ export class Engine {
   view: View = {zoom: 1, x: 0, y: 0};
   viewport = {left: 0, top: 0, w: 0, h: 0};
   navigating = false;
+  // A locked width ignores every gesture, wheel and key resize; only setWidth() changes it.
+  widthLocked = false;
   revision = 0;
   changed = () => {};
   notify = (_message: string) => {};
@@ -100,7 +102,8 @@ export class Engine {
   }
   // Small drift of a resting finger never sizes; once past the dead zone, only the excess counts and sizing stays live until lift.
   size(dy:number,scale:number) {if(!this.sizing){this.travel+=dy;if(Math.abs(this.travel)<=WIDTH_DEADZONE)return;dy=this.travel-Math.sign(this.travel)*WIDTH_DEADZONE;this.sizing=true;}this.resize(-dy*WIDTH_RATE/scale);}
-  resize(delta:number) {this.drawing.cursor.w=clamp(this.drawing.cursor.w+delta,2,120);this.sample();}
+  resize(delta:number) {if(this.widthLocked)this.notify('Width is locked');else this.setWidth(this.drawing.cursor.w+delta);}
+  setWidth(w:number) {this.drawing.cursor.w=clamp(w,2,120);this.sample();}
   upPointer(id:number, time?:number) {
     if (!this.pointers.delete(id)) return;
     if(id===this.pressure) {this.end();this.pressure=null;}
