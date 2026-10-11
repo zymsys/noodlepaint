@@ -9,7 +9,7 @@ NoodlePaint is a standalone iPhone painting PWA: Vite + strict TypeScript + Canv
 Node 22.12+ or 24.
 
 - `npm run dev`: Vite dev server on 127.0.0.1; `npm run dev:lan` exposes it on the LAN (no service worker on iOS over HTTP)
-- `npm run phone`: build and serve the production PWA for on-device testing (see `scripts/phone.mjs`)
+- `npm run phone`: build and serve the production PWA over LAN HTTPS at `https://vics-macbook-pro.local:4173/` (mkcert cert in gitignored `.certs/`; the iPhone trusts the mkcert root CA). Keep it running, `npm run build` in another terminal, then foreground the app to test the update path.
 - `npm run release`: tests, `npm version patch`, push the tag. **Only tags deploy** to Pages; pushes to `main` just run CI.
 - `npm test`: unit tests (`tsx --test tests/*.test.ts`, node:test + `fake-indexeddb`)
 - Single test: `npx tsx --test --test-name-pattern='width is deterministic' tests/engine.test.ts`
