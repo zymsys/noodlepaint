@@ -1,3 +1,9 @@
+# Verification — 2026-10-11 (steering clutch, pinch zoom)
+
+- 45 unit tests. New: lifting the steering finger mid-stroke keeps the stroke open and a new steering finger continues the same stroke without a jump (one undo step); simultaneous held or moving contacts navigate and never paint or undo; pinch keeps the world point under the midpoint, pans clamp to the paper, zoom is bounded at 1–10×; a leftover finger keeps panning and new fingers never steer mid-navigation; the cursor is pulled into view afterwards; restore resets the view.
+- 34 browser checks. New: real CDP clutch (lift, re-steer, same stroke) and a real pinch to 3× that stretches a frozen frame while moving, repaints sharp on release, keeps the eyedropper accurate while zoomed, and pinches back out to fit. The QA touch helper now waits 200 ms before adding a finger so staggered contacts still paint. Screenshot: `test-results/noodlepaint-zoom.png`.
+- Not verified here (needs the iPhone): whether 150 ms is the right "together" window for real hands, and pinch smoothness on large drawings (a repaint of every layer happens once on release).
+
 # Verification — 2026-10-11 (layers, library, undo/redo taps, eraser, eyedropper, photos)
 
 - 42 unit tests: v1→v2 storage migration (and an abort that leaves corrupt v1 data untouched), library listing/rename/delete with photo blobs, corrupt current drawing fails open, 2-finger undo and 3-finger redo taps (no stray dot; slow, staggered or moving contacts stay strokes), redo cleared by new edits, layer add/move/delete/settings undo, locked/hidden layers refuse paint, eraser strokes, clear-all undo, v2 validation, cross-layer restore undo, and backup bundles (old single drawings, re-keyed photos, missing photo rejected).

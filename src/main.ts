@@ -44,7 +44,7 @@ const observer=new ResizeObserver(()=>{engine.suspend();renderer.resize();change
 
 // ---- Painting input
 canvas.addEventListener('pointerdown',e=>{if(!ready||sheetOpen()||e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();engine.downPointer(e.pointerId,e.clientX,e.clientY,e.pointerType,e.timeStamp);try{canvas.setPointerCapture(e.pointerId);}catch{engine.cancelPointer(e.pointerId);}changed();if(engine.down)void persist();});
-canvas.addEventListener('pointermove',e=>{if(!engine.pointers.has(e.pointerId))return;e.preventDefault();const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];for(const p of samples.length?samples:[e])engine.movePointer(e.pointerId,p.clientX,p.clientY,renderer.scale);});
+canvas.addEventListener('pointermove',e=>{if(!engine.pointers.has(e.pointerId))return;e.preventDefault();const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];for(const p of samples.length?samples:[e])engine.movePointer(e.pointerId,p.clientX,p.clientY,engine.transform.scale);});
 function up(e:PointerEvent){const before=engine.revision;engine.upPointer(e.pointerId,e.timeStamp);changed();if(engine.revision!==before||!engine.down)void persist();}
 window.addEventListener('pointerup',up);
 window.addEventListener('pointercancel',e=>{engine.cancelPointer(e.pointerId);changed();void persist();});
@@ -52,8 +52,11 @@ canvas.addEventListener('lostpointercapture',e=>{if(engine.steer===e.pointerId||
 // Touching anything else ends a painting gesture. Only refresh when one was live: a refresh rebuilds open sheets, which would eat this tap.
 document.addEventListener('pointerdown',e=>{if(e.target!==canvas&&engine.pointers.size){engine.suspend();changed();void persist();}},true);
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('wheel',e=>{e.preventDefault();if(!engine.pointers.size||engine.pointers.get(engine.steer!)?.type==='mouse')engine.resize(-Math.sign(e.deltaY)*2);},{passive:false});
-canvas.addEventListener('keydown',e=>{if(!ready||engine.pointers.size)return;const c=engine.drawing.cursor;const amount=(e.shiftKey?20:4)/renderer.scale;
+canvas.addEventListener('wheel',e=>{e.preventDefault();
+ // Ctrl+wheel (also a trackpad pinch) zooms about the pointer.
+ if(e.ctrlKey){if(!engine.pointers.size){engine.navigate(e.clientX,e.clientY,1,e.clientX,e.clientY,Math.exp(-e.deltaY*.01));engine.endNavigation();}return;}
+ if(!engine.pointers.size||engine.pointers.get(engine.steer!)?.type==='mouse')engine.resize(-Math.sign(e.deltaY)*2);},{passive:false});
+canvas.addEventListener('keydown',e=>{if(!ready||engine.pointers.size)return;const c=engine.drawing.cursor;const amount=(e.shiftKey?20:4)/engine.transform.scale;
  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)engine.redo();else engine.undo();void persist();}
  else if(e.code==='Space'){e.preventDefault();engine.begin();}else if(e.key==='+'||e.key==='='){e.preventDefault();engine.resize(2);}else if(e.key==='-'){e.preventDefault();engine.resize(-2);}else if(e.key.startsWith('Arrow')){e.preventDefault();const dx=e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0,dy=e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0;c.x=Math.max(0,Math.min(engine.drawing.width,c.x+dx));c.y=Math.max(0,Math.min(engine.drawing.height,c.y+dy));engine.sample();}});
 canvas.addEventListener('keyup',e=>{if(e.code==='Space'){engine.end();void persist();}});

@@ -8,10 +8,13 @@ export type Layer = { id: string; name: string; visible: boolean; locked: boolea
 export type Drawing = { version: 2; width: number; height: number; layers: Layer[]; active: number; cursor: Sample; color: string };
 export type Tool = 'brush' | 'erase';
 type Snapshot = { layers: Layer[]; active: number };
+export type View = { zoom: number; x: number; y: number };
 // Second-finger sizing: travel (client px) ignored before width starts changing, then width units per world unit of travel.
 export const WIDTH_DEADZONE = 24, WIDTH_RATE = 0.15;
 // Multi-finger taps: all fingers down within TAP_SPREAD ms, all up within TAP_TIME ms of the first, none moving beyond TAP_SLOP client px.
 export const TAP_SPREAD = 150, TAP_TIME = 350, TAP_SLOP = 12;
+// Pan and zoom: two fingers landing together (within TAP_SPREAD) navigate instead of painting; zoom is relative to the fitted paper.
+export const MAX_ZOOM = 10, VIEW_MARGIN = 24;
 export const MAX_LAYERS = 20, HISTORY = 200, RESTORE_UNDO = 100;
 export const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -32,12 +35,29 @@ export class Engine {
   history: Snapshot[] = [];
   future: Snapshot[] = [];
   tap: {start: number; count: number; valid: boolean; mark: number; future: Snapshot[]} | null = null;
+  // view pans in CSS px of the canvas (left/top are its client offset); navigating holds while any navigating finger is down.
+  view: View = {zoom: 1, x: 0, y: 0};
+  viewport = {left: 0, top: 0, w: 0, h: 0};
+  navigating = false;
   revision = 0;
   changed = () => {};
   notify = (_message: string) => {};
   get down() { return this.active !== null; }
   get layer() { return this.drawing.layers[this.drawing.active]; }
   get empty() { return this.drawing.layers.every(l => !l.strokes.length && !l.image); }
+  // World to canvas CSS px: the paper fitted to the viewport, then zoomed about the canvas origin and panned.
+  get transform() {const d=this.drawing,{w,h}=this.viewport,f=Math.min(w/d.width,h/d.height)||1,z=this.view.zoom;return {scale:f*z,ox:(w-d.width*f)/2*z+this.view.x,oy:(h-d.height*f)/2*z+this.view.y};}
+  setViewport(left:number,top:number,w:number,h:number) {this.viewport={left,top,w,h};this.setView(this.view);}
+  // The zoomed viewport always covers the screen, so the paper can never be lost off an edge; zoom 1 is the fitted view.
+  setView(v:View) {const z=clamp(v.zoom,1,MAX_ZOOM),{w,h}=this.viewport;this.view={zoom:z,x:clamp(v.x,w*(1-z),0),y:clamp(v.y,h*(1-z),0)};}
+  // Pinch about the fingers' midpoint: the point under the old midpoint ends up under the new one.
+  navigate(ax:number,ay:number,ad:number,bx:number,by:number,bd:number) {const v=this.view,z=ad>0&&bd>0?v.zoom*bd/ad:v.zoom,k=clamp(z,1,MAX_ZOOM)/v.zoom,ox=ax-this.viewport.left,oy=ay-this.viewport.top;this.setView({zoom:v.zoom*k,x:bx-this.viewport.left-(ox-v.x)*k,y:by-this.viewport.top-(oy-v.y)*k});this.touch();}
+  // After navigating, a cursor left off screen is pulled just inside the visible part of the paper.
+  endNavigation() {
+    this.navigating=false;const {scale,ox,oy}=this.transform,{w,h}=this.viewport,c=this.drawing.cursor,m=VIEW_MARGIN;
+    const fit=(v:number,lo:number,hi:number,max:number)=>clamp(v,clamp(lo,0,max),clamp(hi,0,max));
+    c.x=fit(c.x,(m-ox)/scale,(w-m-ox)/scale,this.drawing.width);c.y=fit(c.y,(m-oy)/scale,(h-m-oy)/scale,this.drawing.height);this.touch();
+  }
   touch() { this.revision++; this.changed(); }
   sample() { if (this.active) this.active.samples.push({...this.drawing.cursor}); this.touch(); }
   capture(): Snapshot { return {layers: copyLayers(this.drawing.layers), active: this.drawing.active}; }
@@ -60,13 +80,18 @@ export class Engine {
       if (!this.pointers.size) this.tap = {start: time, count: 0, valid: true, mark: this.history.length, future: this.future};
       if (this.tap) { this.tap.count++; if (time - this.tap.start > TAP_SPREAD) this.tap.valid = false; }
     }
+    const together=type==='touch'&&!!this.tap&&this.tap.valid&&this.tap.count===2&&this.pressure===null&&this.steer!==null&&this.pointers.get(this.steer)?.type==='touch';
     this.pointers.set(id,{x,y,type,ox:x,oy:y});
-    if(this.blocked) return;
+    if(this.navigating||this.blocked) return;
+    if(together){this.steer=null;this.navigating=true;return;}
     if(this.steer === null) {this.steer=id; if(type==='mouse'||type==='pen') this.begin();}
     else if(this.pressure === null && this.pointers.get(this.steer)?.type==='touch' && type==='touch') {this.pressure=id;this.travel=0;this.sizing=false;this.begin();}
   }
   movePointer(id:number,x:number,y:number,scale=1) {
     const p=this.pointers.get(id); if(!p) return;
+    if(this.navigating){const [a,b]=[...this.pointers.values()].filter(q=>q.type==='touch'),before=b?[(a.x+b.x)/2,(a.y+b.y)/2,Math.hypot(a.x-b.x,a.y-b.y)]:[a.x,a.y,0];p.x=x;p.y=y;
+      if(this.tap&&Math.hypot(x-p.ox,y-p.oy)>TAP_SLOP) this.tap.valid=false;if(p!==a&&p!==b)return;
+      const after=b?[(a.x+b.x)/2,(a.y+b.y)/2,Math.hypot(a.x-b.x,a.y-b.y)]:[a.x,a.y,0];this.navigate(before[0],before[1],before[2],after[0],after[1],after[2]);return;}
     const dx=x-p.x, dy=y-p.y; p.x=x;p.y=y;
     if(this.tap&&Math.hypot(x-p.ox,y-p.oy)>TAP_SLOP) this.tap.valid=false;
     if(this.blocked) return;
@@ -79,8 +104,9 @@ export class Engine {
   upPointer(id:number, time?:number) {
     if (!this.pointers.delete(id)) return;
     if(id===this.pressure) {this.end();this.pressure=null;}
-    if(id===this.steer) {this.end();this.steer=null;this.pressure=null;this.blocked=this.pointers.size>0;}
-    if(!this.pointers.size) {this.blocked=false;this.finishTap(time);}
+    // Lifting the steering finger while the painting finger stays down is a clutch, like lifting a mouse: the stroke waits for a new steering finger.
+    if(id===this.steer) {this.steer=null;if(this.pressure===null||!this.pointers.has(this.pressure)){this.end();this.pressure=null;this.blocked=this.pointers.size>0;}}
+    if(!this.pointers.size) {if(this.navigating)this.endNavigation();this.blocked=false;this.finishTap(time);}
   }
   // A 2-finger tap undoes and a 3-finger tap redoes. The dot the tap itself painted is retracted first, leaving no trace in either stack.
   finishTap(time?:number) {
@@ -91,7 +117,7 @@ export class Engine {
     if(t.count===2?this.undo():this.redo()) this.notify(t.count===2?'Undo':'Redo'); else this.touch();
   }
   cancelPointer(id:number) {if(this.tap)this.tap.valid=false;if(id===this.steer||id===this.pressure) this.suspend();this.upPointer(id);}
-  suspend() {this.end();this.steer=null;this.pressure=null;this.blocked=this.pointers.size>0;}
+  suspend() {this.end();this.steer=null;this.pressure=null;if(this.navigating)this.endNavigation();this.blocked=this.pointers.size>0;}
   resetPointers() {this.suspend();this.pointers.clear();this.blocked=false;this.tap=null;}
   undo() {this.suspend();const prev=this.history.pop();if(!prev)return false;this.future.push(this.capture());this.apply(prev);this.touch();return true;}
   redo() {this.suspend();const next=this.future.pop();if(!next)return false;this.history.push(this.capture());this.apply(next);this.touch();return true;}
@@ -118,7 +144,7 @@ export class Engine {
   }
   selectLayer(i:number) {if(i!==this.drawing.active&&this.drawing.layers[i]){this.suspend();this.drawing.active=i;this.touch();}}
   restore(d:Drawing) {
-    this.resetPointers();this.drawing=d;this.future=[];this.history=[];
+    this.resetPointers();this.drawing=d;this.future=[];this.history=[];this.setView({zoom:1,x:0,y:0});
     // Recent restored strokes stay individually undoable (bounded, since each step holds a copy of every stroke list).
     const order=d.layers.flatMap((l,li)=>l.strokes.map((_,si)=>[li,si] as const));
     for(let k=Math.max(0,order.length-RESTORE_UNDO);k<order.length;k++){const [li,si]=order[k];this.history.push({layers:d.layers.map((l,i)=>({...l,strokes:i<li?l.strokes.slice():i===li?l.strokes.slice(0,si):[]})),active:d.active});}
