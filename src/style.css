@@ -62,3 +62,36 @@
 .width-row button{width:44px;height:44px;border:1px solid #c7c4d6;border-radius:14px;font-size:20px;flex-shrink:0}
 #width-value{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
 #width-lock[aria-pressed=true]{background:#d15b68;border-color:#d15b68;color:#fcfbff}
+
+#tutorial-start{pointer-events:auto;display:block;margin:14px auto 0;padding:10px 16px;border-radius:20px;background:#faf9fded;color:#293355;font-size:14px;border:1px solid #dcdbe5}
+#tutorial-start u{text-decoration-color:#9866b5;text-underline-offset:3px}
+#coach{position:absolute;z-index:2;top:calc(6px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 16px));max-height:calc(100% - 70px);overflow:auto;background:#fcfbff;color:#293355;border-radius:20px;padding:10px 14px;box-shadow:0 10px 32px #29335529;line-height:1.4;font-size:13px}
+#coach .panel-actions button{padding:6px 12px;border-radius:12px}
+#coach[hidden]{display:none}
+#coach-count{margin:0;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#636982}
+#coach-title{margin:0;font-size:17px;letter-spacing:-.3px}
+#coach-text{margin:4px 0}
+#coach-note{margin:2px 0 6px;min-height:1.4em;color:#d15b68;font-weight:600}
+#coach.passed #coach-note{color:#217a71}
+#coach-tips{margin:4px 0 8px;padding-left:18px}#coach-tips li{margin:5px 0}
+#coach-art svg{display:block;width:100%;max-width:210px;height:auto;margin:4px auto 0;background:#f3f1f9;border-radius:14px}
+#coach-art text{font-size:10px;fill:#636982}
+#coach-art .finger{fill:#9866b538;stroke:#9866b5;stroke-width:1.5}
+#coach-art .ring{fill:none;stroke:#293355;stroke-width:1.6}#coach-art .pip{fill:#293355}
+#coach-art .ink{stroke:#293355;stroke-width:5;stroke-linecap:round}#coach-art .ink-fill{fill:#293355}
+#coach-art .arrow{fill:none;stroke:#217a71;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#coach-art *{transform-box:fill-box;transform-origin:center}
+#coach-art .slide{animation:coach-slide 4s ease-in-out infinite}
+#coach-art .press{animation:coach-press 4s ease-in-out infinite}
+#coach-art .rise{animation:coach-rise 4s ease-in-out infinite}
+#coach-art .draw{stroke-dasharray:1;animation:coach-draw 4s ease-in-out infinite}
+#coach-art .tap{animation:coach-tap 2.4s ease-out infinite}
+#coach-art .vanish{animation:coach-vanish 2.4s ease-out infinite}
+@keyframes coach-slide{0%,15%{transform:translateX(0)}65%{transform:translateX(110px)}100%{transform:translateX(0)}}
+@keyframes coach-press{0%,12%{opacity:0;transform:scale(1.4)}18%,62%{opacity:1;transform:scale(1)}68%,100%{opacity:0;transform:scale(1)}}
+@keyframes coach-rise{0%,15%{transform:translateY(0)}65%,100%{transform:translateY(-26px)}}
+@keyframes coach-draw{0%,15%{stroke-dashoffset:1;opacity:1}65%,90%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes coach-tap{0%,20%{opacity:0;transform:scale(1.3)}28%,42%{opacity:1;transform:scale(1)}52%,100%{opacity:0}}
+@keyframes coach-vanish{0%,40%{opacity:1}52%,88%{opacity:0}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){#coach-art *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}
+body.coaching #toast{top:auto;bottom:52px}

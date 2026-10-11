@@ -1,3 +1,9 @@
+# Verification — 2026-10-11 (tutorial)
+
+- 35 browser checks (new: launched from the empty-canvas hint, the tutorial advances only on real CDP gestures; a too-short line gets a hint and stays on step 2; two-finger undo finishes it; six tips; Clear my practice restores the canvas undoably along with the width lock and brush size; launch from ⋯, Next and Skip). Screenshots: `test-results/noodlepaint-tutorial{,-2,-3,-tips}.png`.
+- Found while testing: step 1 could leave the ring at the paper's edge, so the next line stopped short and the learner was told to draw further; drawing steps now start the ring on the left, below the card.
+- Not verified: whether a child reads the card. The animations are the main teaching aid, and they are off under reduced motion.
+
 # Verification — 2026-10-11 (exact width and width lock)
 
 - 47 unit tests (new: a locked width ignores the second finger, wheel and keys and says so; `setWidth` still applies and clamps).

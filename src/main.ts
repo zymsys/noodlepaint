@@ -1,4 +1,5 @@
 import './style.css';
+import {createTutorial} from './tutorial';
 import {Engine,BLENDS,MAX_LAYERS,newId,type Blend} from './engine';
 import {SketchStore,SaveQueue,newDoc,type Doc} from './storage';
 import {Renderer} from './render';
@@ -32,12 +33,13 @@ let thumbTimer=0,thumbRevision=-1;
 function scheduleThumb(){clearTimeout(thumbTimer);if(engine.down||!ready||loadFailed)return;thumbTimer=window.setTimeout(()=>void saveThumb(),1500);}
 async function saveThumb(){clearTimeout(thumbTimer);if(!ready||loadFailed||thumbRevision===engine.revision)return;const revision=engine.revision,id=doc.id;try{await store.setThumb(id,await renderer.thumb(engine.drawing));thumbRevision=revision;}catch{}}
 function changed(){
- renderer.request();$('hint').hidden=!engine.empty||engine.pointers.size>0;$('pen-state').textContent=engine.down?(engine.tool==='erase'?'Erasing':'Making a mark'):engine.tool==='erase'?'Eraser raised':'Brush raised';$('pen-dot').classList.toggle('down',engine.down);$('width-number').textContent=String(Math.round(engine.drawing.cursor.w));$('width-locked').hidden=!engine.widthLocked;$('width-button').setAttribute('aria-label',`Brush width ${Math.round(engine.drawing.cursor.w)}${engine.widthLocked?', locked':''}. Set width`);if(widthSheet.open)showWidth();
+ renderer.request();$('hint').hidden=!engine.empty||engine.pointers.size>0||tutorial.active;$('pen-state').textContent=engine.down?(engine.tool==='erase'?'Erasing':'Making a mark'):engine.tool==='erase'?'Eraser raised':'Brush raised';$('pen-dot').classList.toggle('down',engine.down);$('width-number').textContent=String(Math.round(engine.drawing.cursor.w));$('width-locked').hidden=!engine.widthLocked;$('width-button').setAttribute('aria-label',`Brush width ${Math.round(engine.drawing.cursor.w)}${engine.widthLocked?', locked':''}. Set width`);if(widthSheet.open)showWidth();
  $<HTMLButtonElement>('undo').disabled=!engine.history.length;$<HTMLButtonElement>('redo').disabled=!engine.future.length;$<HTMLButtonElement>('clear').disabled=engine.empty;
  $('eraser').setAttribute('aria-pressed',String(engine.tool==='erase'));showPalette();
- if(layers.open)showLayers();status();scheduleThumb();
+ if(layers.open)showLayers();status();scheduleThumb();tutorial.update();
 }
 engine.changed=changed;
+const tutorial=createTutorial(engine,changed);$('tutorial-start').onclick=()=>tutorial.start();$('open-tutorial').onclick=()=>tutorial.start();
 async function init(){try{doc=await store.open();engine.restore(doc.drawing);queue.savedRevision=engine.revision;}catch{loadFailed=true;storageMessage='Could not read local storage. Existing data has not been replaced. Save an editable backup before closing.';}ready=true;renderer.resize();changed();}
 void init();
 const observer=new ResizeObserver(()=>{engine.suspend();renderer.resize();changed();void persist();});observer.observe(canvas);
