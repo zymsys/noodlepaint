@@ -1,12 +1,16 @@
 export type Sample = { x: number; y: number; w: number };
 export type Stroke = { color: string; samples: Sample[] };
 export type Drawing = { version: 1; width: number; height: number; strokes: Stroke[]; cursor: Sample; color: string };
+// Second-finger sizing: travel (client px) ignored before width starts changing, then width units per world unit of travel.
+export const WIDTH_DEADZONE = 24, WIDTH_RATE = 0.15;
 export const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 export class Engine {
   drawing: Drawing = { version: 1, width: 900, height: 1600, strokes: [], cursor: { x: 450, y: 790, w: 18 }, color: '#293355' };
   active: Stroke | null = null;
   steer: number | null = null;
   pressure: number | null = null;
+  travel = 0;
+  sizing = false;
   pointers = new Map<number, {x: number; y: number; type: string}>();
   blocked = false;
   history: Stroke[][] = [];
@@ -22,15 +26,17 @@ export class Engine {
     this.pointers.set(id,{x,y,type});
     if(this.blocked) return;
     if(this.steer === null) {this.steer=id; if(type==='mouse'||type==='pen') this.begin();}
-    else if(this.pressure === null && this.pointers.get(this.steer)?.type==='touch' && type==='touch') {this.pressure=id;this.begin();}
+    else if(this.pressure === null && this.pointers.get(this.steer)?.type==='touch' && type==='touch') {this.pressure=id;this.travel=0;this.sizing=false;this.begin();}
   }
   movePointer(id:number,x:number,y:number,scale=1) {
     const p=this.pointers.get(id); if(!p) return;
     const dx=x-p.x, dy=y-p.y; p.x=x;p.y=y;
     if(this.blocked) return;
     if(id===this.steer) {const c=this.drawing.cursor;c.x=clamp(c.x+dx/scale,0,this.drawing.width);c.y=clamp(c.y+dy/scale,0,this.drawing.height); if(dx||dy) this.sample();}
-    if(id===this.pressure && dy) this.resize(-dy*0.35/scale);
+    if(id===this.pressure && dy) this.size(dy,scale);
   }
+  // Small drift of a resting finger never sizes; once past the dead zone, only the excess counts and sizing stays live until lift.
+  size(dy:number,scale:number) {if(!this.sizing){this.travel+=dy;if(Math.abs(this.travel)<=WIDTH_DEADZONE)return;dy=this.travel-Math.sign(this.travel)*WIDTH_DEADZONE;this.sizing=true;}this.resize(-dy*WIDTH_RATE/scale);}
   resize(delta:number) {this.drawing.cursor.w=clamp(this.drawing.cursor.w+delta,2,120);this.sample();}
   upPointer(id:number) {
     this.pointers.delete(id);
