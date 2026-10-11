@@ -1,7 +1,8 @@
-name: Deploy to GitHub Pages
+name: Release to GitHub Pages
+# Releases only: `npm run release` bumps the version and pushes a v* tag.
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 permissions:
   contents: read

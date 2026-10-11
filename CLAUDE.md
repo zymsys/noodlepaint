@@ -8,7 +8,9 @@ NoodlePaint is a standalone iPhone painting PWA: Vite + strict TypeScript + Canv
 
 Node 22.12+ or 24.
 
-- `npm run dev`: Vite dev server on 127.0.0.1
+- `npm run dev`: Vite dev server on 127.0.0.1; `npm run dev:lan` exposes it on the LAN (no service worker on iOS over HTTP)
+- `npm run phone`: build and serve the production PWA for on-device testing (see `scripts/phone.mjs`)
+- `npm run release`: tests, `npm version patch`, push the tag. **Only tags deploy** to Pages; pushes to `main` just run CI.
 - `npm test`: unit tests (`tsx --test tests/*.test.ts`, node:test + `fake-indexeddb`)
 - Single test: `npx tsx --test --test-name-pattern='width is deterministic' tests/engine.test.ts`
 - `npm run build`: `tsc --noEmit`, then `vite build`, then `scripts/sw-build.mjs` (writes `dist/sw.js`). TypeScript errors fail the build.
@@ -24,7 +26,7 @@ Node 22.12+ or 24.
 - `src/render.ts`: fits the world into the canvas without stretching (`scale`/`ox`/`oy`) and draws variable-width strokes as tangent-hull segments plus dots, with an offscreen cache for completed strokes.
 - `src/sw-template.js` → `dist/sw.js`: `sw-build.mjs` replaces `__VERSION__` with a content hash of the shell and `__SHELL__` with the asset list. The worker caches only the exact app shell (it rejects redirects and wrong content types so auth-gate pages never get cached), serves navigations network-first, and waits for an `ACTIVATE` message instead of auto-activating. Don't add `skipWaiting` or automatic reloads, because an update must never land mid-stroke.
 - All paths are relative (`base: './'` in `vite.config.ts`, `./manifest.webmanifest`, `./sw.js`, scope `./`) because Pages serves the app under `/noodlepaint/`. Never introduce root-absolute URLs.
-- Deploy: `.github/workflows/pages.yml` runs on every push to `main` (`npm ci`, `npm test`, `npm run build`, then upload `dist/`). Installed apps call `registration.update()` when they return to the foreground and show “Update ready” in the status line.
+- Deploy: `.github/workflows/pages.yml` runs on `v*` tags (`npm ci`, `npm test`, `npm run build`, then upload `dist/`). Installed apps call `registration.update()` when they return to the foreground and show a dot on the tray's ? button (`#help[data-badge]`: `update` or `alert`). The `#status` text is visually hidden, but tests still read it. `__APP_VERSION__` (from `vite.config.ts`) is shown in Help; local builds are tagged `-local (sha)`.
 
 ## Conventions
 

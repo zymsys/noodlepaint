@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:lan": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build && node scripts/sw-build.mjs",
     "test": "tsx --test tests/*.test.ts",
+    "test:browser": "node scripts/browser-qa.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test:browser": "node scripts/browser-qa.mjs"
+    "phone": "node scripts/phone.mjs",
+    "release": "npm test && npm version patch && git push --follow-tags"
   },
   "devDependencies": {
     "vite": "^7.1.0",

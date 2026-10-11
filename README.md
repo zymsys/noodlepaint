@@ -9,13 +9,15 @@ Artwork has fixed 900×1600 coordinates, fitted without stretching. Editable x/y
 ## Develop
 Use Node 22.12+ or 24. `npm ci`, `npm test`, `npm run build`, `npm run dev`. Build emits a revisioned service worker and relative manifest/scope. No browser download is required: point tests at existing browser executables. `npm run build` runs TypeScript first. Vite uses `base: './'`, so the build works under any sub-path.
 
-## Deploy
-Every push to `main` runs `.github/workflows/pages.yml`: unit tests, build, then publish `dist/` to GitHub Pages. Each build gets a new content-hashed service worker, so installed apps pick up the update in the background.
+Phone testing: `npm run dev:lan` serves the dev build on the LAN (UI only; iOS refuses service workers over plain HTTP). `npm run phone` builds and serves the production PWA for on-device install/update testing. Rebuild with `npm run build` while it runs, then foreground the app to receive the update. Help → Version shows `x.y.z-local (sha)` for local builds.
+
+## Release
+`npm run release` runs the tests, bumps the patch version, and pushes a `v*` tag; `.github/workflows/pages.yml` then builds and publishes `dist/` to GitHub Pages. Pushes to `main` only run CI (`ci.yml`). Each build gets a new content-hashed service worker, so installed apps pick up the update in the background.
 
 ## Install
 Open https://zymsys.github.io/noodlepaint/ in iPhone Safari. Share (or More, then Share) → Add to Home Screen → enable Open as Web App if shown → Add. Launch the installed app online and wait for Offline ready in Help. Safari and standalone storage may be separate; use Save editable backup / Open backup to transfer a drawing. Browser storage can be evicted. Offline readiness requires a controlling worker and a complete app-shell cache, checked separately per installation.
 
-Updates cache a new shell and wait. The app checks for one whenever it returns to the foreground; the status line then shows “Update ready”, and Help’s Update app button saves first, then deliberately activates and reloads. No automatic reload midstroke. Drawings live in a separate IndexedDB database and survive updates. Device cold launch must be verified on actual iPhone.
+Updates cache a new shell and wait. The app checks for one whenever it returns to the foreground; a dot appears on the ? button in the tray, and Help’s Update app button saves first, then deliberately activates and reloads. No automatic reload midstroke. Drawings live in a separate IndexedDB database and survive updates. Device cold launch must be verified on actual iPhone.
 
 ## Validation
 28 unit tests cover the gesture engine, corruption validation, IndexedDB, save serialization and colour/palette maths. `node scripts/browser-qa.mjs` uses already installed Chromium/WebKit (override CHROME_PATH if needed); it covers real browser-dispatched simulated touch contacts, mouse, keyboard, resize, storage failure, offline shell, delayed worker updates, auth redirect rejection and the swatch mixer (tap vs. hold, cancel, persistence, reset). These are desktop browser simulations, not physical iPhone validation.

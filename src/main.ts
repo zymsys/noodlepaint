@@ -12,7 +12,7 @@ const queue=new SaveQueue(d=>store.write(d),status);
 function status(){
  const saved=ready&&!loadFailed&&!queue.error&&queue.savedRevision===engine.revision;
  const label=loadFailed?'Local save unavailable':queue.error?'Not saved · retry':saved?'Saved on this device':'Saving on this device…';
- $('status').textContent=label+(updateReady?' · Update ready':'');
+ $('status').textContent=label+(updateReady?' · Update ready':'');$('help').dataset.badge=loadFailed||queue.error?'alert':updateReady?'update':'';
  $('storage-detail').textContent=loadFailed?storageMessage:queue.error?'Save failed. Your drawing is still open. Retry or save a backup.':saved?'Saved on this device. Backups keep it safe.':'Saving your editable brush samples…';
  $('retry').hidden=!queue.error||loadFailed;
 }
@@ -53,7 +53,7 @@ swatches.forEach((b,i)=>{let timer=0,held=false,x=0,y=0;
 showPalette();
 $('undo').onclick=()=>{engine.undo();void persist();};$('clear').onclick=()=>{engine.clear();void persist();};
 function help(){engine.suspend();changed();void persist();panel.showModal();}
-$('help').onclick=help;$('status').onclick=help;$('close').onclick=()=>panel.close();$('retry').onclick=()=>void persist();
+$('help').onclick=help;$('version').textContent=__APP_VERSION__;$('close').onclick=()=>panel.close();$('retry').onclick=()=>void persist();
 $('export').onclick=()=>{const data=JSON.stringify(engine.snapshot());const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='noodlepaint-sketch.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);};
 // Backup import stays in the help panel; it is always undoable.
 const importButton=document.createElement('button');importButton.textContent='Open backup';const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.hidden=true;$('export').parentElement!.append(importButton,picker);importButton.onclick=()=>picker.click();picker.onchange=async()=>{const f=picker.files?.[0];if(!f)return;try{if(f.size>64000000)throw Error('Too large');const d=validate(JSON.parse(await f.text()));if(d.width!==engine.drawing.width||d.height!==engine.drawing.height)throw Error('Different paper size');engine.suspend();engine.history.push(engine.drawing.strokes.slice());engine.drawing.strokes=d.strokes;engine.drawing.cursor=d.cursor;engine.touch();void persist();}catch{alert('This backup could not be opened. Your current drawing is unchanged.');}picker.value='';};
